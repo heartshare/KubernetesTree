@@ -265,4 +265,37 @@ Kubectl命令行工具用法详解
      如 kubectl get pods pod1
 </pre>
 
+![](https://i.imgur.com/L4SruAP.png)
+
+<pre>
+一个网络留言板的架构
+</pre>
+
+<pre>
+玩转Pod
+   在K8s系统中，Pod在大部分长江下都只是容器的载体而已，通常需要RC,Deployment， DaemonSet, Job等对象来完成Pod的调度与自动控制功能
+   
+   1）RC, Deployment全自动调度
+      RC的主要功能之一就是自动部署一个应用的多份副本，以及持续监控副本的数量，在集群内始终维持用户指定的副本数量
+
+     在调度策略上，除了使用系统内置的调度算法选择合适的Node进行调度，整个调度过程通过执行一些列复杂的算法，最终为每个Pod计算出一个最佳的目标节点，这一过程是自动完成的，通常我们无法知道Pod最终会被调度到哪个节点上。在实际情况下，也可能需要将Pod调度到指定的一些Node上，可以通过Node的标签Label和Pod的nodeselector属性相匹配。来达到上述目的。
+
+   2）NodeAffinity：亲和性调度
+</pre>
+
+![](https://i.imgur.com/hvKPzS1.png)
+
+![](https://i.imgur.com/rdHMI4t.png)
+
+<pre>
+Job 批处理调度
+   K8s从1.2版本开始支持批处理类型的应用，可以通过K8s Job资源对象来定义并启动一个批处理任务，批处理任务通常并行启动多个计算进程去处理一批工作项，处理完成后，整个批处理任务结束，按照批处理任务实现方式的不同，批处理任务可以分为如下的接种方式
+
+   Job Template Expansion模式：一个Job对象对应一个待处理的Work item，有几个Work item就产生几个独立的Job,通常适合Work item数量少，每个Work item要处理的数据量比较大的场景，比如有一个100G的文件作为一个Work item，总共10个文件需要处理
+
+   Queue with Pod Work item模式：采用一个任务队列存放Work item，一个Job对象作为消费者去完成这些Work itm,这种情况下，Job会启动N个Pod，每个Pod对应一个Work item
+
+   Queue with Variable Pod Count模式：也是采用一个任务队列存放Work item,一个Job对象作为消费者去完成这些Work item，但与上面的模式不同，Job启动的Pod数量是可变的。
+</pre>
+
 
