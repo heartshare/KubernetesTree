@@ -199,8 +199,18 @@ Annotation（注解）
         5）团队的联系信息，例如电话号码，负责人名称，网址等。
 </pre>
 
+![](https://i.imgur.com/zUe1Qlp.png)
+
+![](https://i.imgur.com/EcLLMO1.png)
+
 <pre>
 K8s的安装与配置
+   K8s系统由一组可执行程序组成，Github上的K8s项目页下载编译好的二级制包，或者瞎子源代码并编译后进行安装。
+   最简单的安装方法是使用yum install kubernetes命令完成K8s集群的安装，但仍需要修改各组件的启动参数，才能完成K8s集群的配置。 
+
+   在K8s Master节点安装部署etcd, kube-apiserver, kube-controller-manager, kube-scheduler服务进程，使用kubectl作为客户端与Master进程交互操作，在工作Node上仅仅需要部署kubelet和kube-proxy服务进程，K8s还提供了一个all-in-one的hyperkube程序来完成对应上服务程序的启动
+
+   K8s的服务都可以通过知己运行二进制文件加上启动参数完成，为了便于管理，常见的做法是将K8s服务程序配置为Linux的系统开机自动启动的任务。
 </pre>
 
 
