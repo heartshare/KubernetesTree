@@ -154,8 +154,53 @@ Service服务
    Pod的Endpoint地址会随着Pod的销毁和重新创建而发生改变，因为新的Pod的IP地址与以前旧的Pod不同，而Service一旦创建，K8s就会自动为它分配一个可用的Cluster IP,而且在Service的整个生命周期内，它的Cluster IP不会发生改变，于是服务发现这个棘手的问题再K8s的架构里也得以轻松解决，只需要Service的Name与Service的Cluster IP地址做一个DNS域名映射即可完美解决这一问题。
 </pre>
 
+![](https://i.imgur.com/v5olSl3.png)
+
 <pre>
 K8s的服务发现机制
+   首先，每个K8s中的Service都有一个唯一的Cluster IP以及唯一的名字，而名字是由开发者自己定义的，部署的时候没必要改变，所以完全可以固定在配置中，接下来的问题就是如何通过Service的名字找到对应的Cluster IP?
+   最早的时候K8s采用了Linux环境变量的方式解决这个问题，即每个Service生成一个对应的Linuxt环境变量，并在每个Pod的容器启动时，自动注入这些环境变量。
+   环境变量的方式不够直观，后来K8s通过Add-On增值包的方式引入DNS系统，把服务名称作为DNS域名，这样一来，程序就可以直接使用服务名来建立通信连接了，目前K8s上的大部分应用都已经采用了DNS这些新兴的服务发现机制。
+
+   外部系统访问Service的问题
+   三种IP
+       1) Node IP: Node节点的IP
+       2）Pod IP: Pod的IP
+          虚拟的二层网络，Pod的IP是Docker Engine根据docker0网桥的IP地址段进行分配的
+       3）Cluster IP: Service 的IP
+          1）Cluster IP仅仅作用于Kubernetes Service这个对象，并由K8s管理和分配IP地址
+          2）Cluster IP无法ping通，因为没有一个实体网络对象来相应
+          3）Cluster IP只能结合Service port组成一个具体的通信端口，单独的Cluster IP不具备通信的基础。
+          5）在K8s集群内部，Node IP网络，Pod IP网，Cluster IP之间的通信采用的是K8s自己设计的一种编程方式的特殊的路由规则，与我们所熟知的IP路由有很大的不同
+</pre>
+
+<pre>
+Volume(存储卷)
+    Volume是Pod中能够被多个容器访问的共享目录，K8s中的卷的概念，用户，目的与Docker中的卷比较类似，但是两者不能等价，首先K8s中的Volume定义在Pod上，然后被一个Pod里的多个容器挂在到具体的文件目录下，其次K8s中的Volume与Pod的生命周期相同，但是与容器的生命周期不相关，当容器终止或者重启时，Volume中的数据也不会丢失，最后K8s支持多种类型的Volume，例如GlusterFS, Ceph等先进的分布式文件系统。
+</pre>
+
+<pre>
+Namespace（命名空间）
+   命名空间是K8s系统中的另一个非常重要的概念，Namespace在很多情况下用于实现多租户的资源隔离，Namespace通过将集群内部的资源对象分配到不同的Namespace中，新城逻辑上分组的不同项目，小组，用户组，便于不同的分组在共享使用整个集群的资源的同时还能被分别管理。
+
+   K8s在启动后，会创建一个名为default的Namespace，通过kubectl可以查看到
+   $ kubectl get namespace
+   接下来如果特别指明Namespace，则用户创建的Pod，RC，Service都将被系统创建到这个默认的名为default的Namespace中。
+   当我们给每个租户创建一个Namespace来实现多租户的资源隔离时，还能结合K8s的资源配额管理，限定不同租户能占用的资源，例如CPU使用量，内存使用量等。
+</pre>
+
+<pre>
+Annotation（注解）
+    Annotion与Label类似，也使用key/value键值对的形式进行定义，不同的是Label具有严格的命名规则，它定义的是K8s对象的元数据，并且勇于Label Selector，而Annotation则是用户任意定义的附加信息，以便于外部工具进行查找，很多时候，K8s的模块吱声通过Annotation的方式标记资源对象的一些特殊信息。
+    一般来说Annotation用来标记的信息如下
+        1）build信息，release信息，Docker镜像信息，例如时间戳，release id号，PR号，镜像HASH值，docker registry地址等
+        2）日志库，监控库，分析库等资源库的地址信息
+        3）程序调式工具信息，例如工具名称，版本号等
+        5）团队的联系信息，例如电话号码，负责人名称，网址等。
+</pre>
+
+<pre>
+K8s的安装与配置
 </pre>
 
 
