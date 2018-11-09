@@ -111,4 +111,24 @@ Pod
 
 <pre>
 Label（标签）
+   Label Selector
+   使用Label可以给对象创建爱你多组标签，Label和Label Selector共同构成了K8s系统中最核心的应用模型，是的被管理对向能够被精细地分组管理，同时实现整个集群的高可用性。
+</pre>
+
+<pre>
+Repliction Controller
+     删除RC并不会删除通过该RC已创建好的Pod,为了删除所有Pod,可以设置replicas的值为0，然后再更新该RC,另外,kubectl提供了stop和delete命令来一次删除RC和RC控制的全部Pod
+
+     当应用升级时，通常会通过Build一个新的Docker镜像，并用新的镜像版本来替代旧的版本的方式来达到目的。在系统升级的过程中，我们希望的是平滑的方式，比如当前系统中10个对应的旧版本的Pod,最佳的方式是旧版本的Pod每次停止一个，同时创建一个新版本的Pod，在整个升级的过程中，此消彼长，而运行中的Pod数量始终是10个，几分钟后，当所有的Pod都已经是最新的版本的时候，升级过程完成，通过RC的机制，K8s很容易就实现了这种高级实用的特性，被称为滚动升级，
+</pre>
+
+<pre>
+Horizontal Pod AutoScale（HPA）
+    通过手工执行kubectl scale命令，我们可以实现Pod的扩容和缩容。
+    原理： 通过追踪分析RC控制的所有目标Pod的负载变化情况，来确定是否需要针对性地调整目标Pod的副本数，这是HPA的实现原理。
+    当前HPA有一下两种方式作为Pod负载的度量指标。
+        1)CPUUtilizationPercentage
+        2)应用程序自定义的度量指标，比如服务在每秒内的相应请求数（TPS, QPS）
+
+    CPUUtilizationPercentage是一个算数平均值，即目标Pod所有副本吱声的CPU利用率的平均值。
 </pre>
