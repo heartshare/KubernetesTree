@@ -63,3 +63,52 @@ Kubernetes是一个完备的分布式系统支撑平台。Kubernetes具有完备
    3）业务系统可以随时随地的整体搬迁到公有云上，K8s最初的设计目标就是运行在Google自家的公有云中，未来会支持更多的公有云及基于OpenStack的私有云，同时在K8s的架构方案中，底层网络的细节被完全屏蔽，基于服务的ClusterIP甚至都无须我们改变运行期的配置文件，就能将系统从屋里环境无缝迁移到公有云平台中，或者在服务高峰期将部分服务对应的Pod副本放入公有云中以提升系统的吞吐量，不仅节省了公司的硬件投入，还大大改善了客户体验。
    5）K8s系统架构具备了超强的横向扩容能力
 </pre>
+
+<pre>
+Master
+     K8s里的Master指的是集群的控制节点，每个K8s集群里需要有一个Master节点来负责整个集群的管理和控制，基本上，K8s所有的空值命令都是发送给它，它来负责具体的执行过程，我们后面所有执行的命令基本上都是在Master节点上运行的，Master节点通常占据一个独立的X86服务器（或者一个虚拟机），一个主要的原因是它太重要了，它是整个集群的首脑，如果宕机或者不可用，那么我们所有的控制命令都将失效。
+     Master节点上运行着一组关键进程
+         1）Kubernetes API Server（kube-apiserver）提供了HTTP REST接口的关键服务进程，是Kubernetes里所有资源的增删改查等操作的唯一入口，也是集群控制的入口进程。
+         2）Kubernetes Controller Manager（kube-controller-manager），K8s里所有资源对象的 自动化控制中心，可以理解为资源对象的“大总管”
+         3) Kubernetes Scheduler（kube-scheduler）负责资源调度（Pod调度）的进程，相当于公交公司的调度室
+         其实Master节点上往往还启动了一个etcd Server进程，因为K8s里的所有资源对象的数据全部保存在etcd中的。
+</pre>
+
+<pre>
+Node 
+    除了 Master节点，K8s集群中的其他机器被称为Node节点，在较早的版本中被称为Minion，与Master一样，Node节点可以是一台物理主机，也可以是一台虚拟机，Node节点才是K8s集群中的工作节点，每个Node都会被Master分配一些工作负载，当某个额Node宕机时，其上的工作负载会被Master自动转移到其他节点上去。
+    每个Node节点上都运行着一下一组关键进程
+       1）kubelet: 负责Pod对应的容器的创建，启停等任务，同时与Master节点密切协作，实现集群管理的基本功能
+       2) kube-proxy: 实现Kubernetes Service的通信与负载均衡机制的重要组件
+       3）Docker Engin： Docker引擎，负责本机的容器创建与负责均衡机制的重要组件
+
+       Node节点可以再运行期间动态增加到K8s集群中，前提是这个节点已经正确安装，配置，启动了上述关键进程，在默认情况下，kubelet会向Master注册自己，这也是Kubernetes推荐的Node管理方式，一旦Node被纳入集群管理方位，kubelet进程就会定时向Master节点汇报自身的情报，例如操作系统，Docker版本，机器的CPU和内存情况，以及之前有哪些Pod在运行等，这样Master可以获知每个Node的资源使用情况，并实现高效的负载均衡的资源调度策略，而某个Node超过指定时间不上报信息时，会被Master判定为失联，Node的状态被标记为不可用，随后Master触发工作负载大转移的自动流程。
+
+       查看集群中有多少个Node
+       #kubectl get nodes
+       查看Node详细信息
+       $ kubectl describe node ''''''
+</pre>
+
+![](https://i.imgur.com/GQpfBPP.png)
+
+<pre>
+Pod
+   Pod是K8s的最重要也是最基本的概念。
+   每个Pod都有
+       1）一个特殊的被称为“根容器”的Pause容器
+       2）一个或者多个紧密相关的用户业务容器
+   K8s之所以设计出一个全新的Pod的概念并且Pod有这样特殊的组成结构
+       1）原因之一： 在一组容器作为单元的情况下，我们难以对“整体”简单地进行判断及有效地进行活动。比如一个容器死亡了，此时算是整体死亡？是N/M的死亡率么？引入业务无关且不易死亡的Pause容器作为Pod的根容器，以它的状态代表整个容器组的状态，就简单巧妙的解决了这个问题。
+       2）原因之二：Pod里的多个业务容器共享Pause容器的IP，共享Pause容器挂接的Volume，这样既简化了密切关联的业务容器之间的通信问题，也很好了解决了他们之间的文件共享问题。
+          K8s为每个Pod都分配了唯一的IP地址，称之为Pod IP,一个Pod里的多个容器共享Pod IP地址，K8s要求底层网络支持集群内任意两个Pod之间的TCP/IP直接通信，这通常采用虚拟二层网络技术来实现，例如Flannel, Openvswitch等。
+         
+   Pod分类
+       1）普通的Pod
+       2) 静态的Pod
+   其中静态的Pod并不存放在K8s的etcd存储里，而是存放在某个具体的Node上的一个具体文件中，并且只在此Node上启动运行，而普通的Node一旦被创建爱你，就会被放入到etcd中存储，随后会被K8s Master调度到买某个具体的Node上并进行绑定，随后该Pod被对应的Node上的kubelet进程实例化成一组相关的Docker容器并启动起来，在默认情况下，当Pod里的某个容器停止时，K8s会自动检测到这个问题并且重新启动这个Pod（重启Pod里的所有容器），如果Pod所在的Node宕机，则会将这个Node上所有的Pod重新调度到其他节点上。    
+</pre>
+
+<pre>
+Label（标签）
+</pre>
