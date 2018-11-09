@@ -211,6 +211,58 @@ K8s的安装与配置
    在K8s Master节点安装部署etcd, kube-apiserver, kube-controller-manager, kube-scheduler服务进程，使用kubectl作为客户端与Master进程交互操作，在工作Node上仅仅需要部署kubelet和kube-proxy服务进程，K8s还提供了一个all-in-one的hyperkube程序来完成对应上服务程序的启动
 
    K8s的服务都可以通过知己运行二进制文件加上启动参数完成，为了便于管理，常见的做法是将K8s服务程序配置为Linux的系统开机自动启动的任务。
+   
+   需要关闭防火墙
+   # systemctl disable firewalld
+   # systemctl stop firewalld
+
+   1) etcd服务
+      etcd服务作为K8s集群的主数据库，在安装K8s个服务之前需要首先安装和启动
+</pre>
+
+<pre>
+K8s集群的安全设置。
+   在一个安全的内网环境中，K8s的各个组件与Master之间可以通过apiserver的非安全端口8080进行访问，但如果apiserver需要对外提供服务，或者及群众的某些容器也需要访问apiserver以获取及群众的某些信息，则更安全的做法是启用HTTPS安全机制，K8s提供了基于CA签名的双向数字证书认证认识和简单的基于HTTP BASE或TOKEN的认证方式，其中CA证书方式的安全性最高。
+</pre>
+
+<pre>
+K8s的版本升级
+   K8s的版本升级需要考虑当前及群众正在运行的容器不受影响，应对集群中的各Node逐个记性隔离，然后等待在其上运行的容器全部执行完毕，再更新该Node上的kubelet,kube-proxy服务，将全部Node都更新完成后，最后更新Master服务。
+</pre>
+
+<pre>
+内网中的K8s的相关配置
+    K8s在能够访问Internet网络的环境中使用起来非常方便，一方面在docker.io和gcr.io网站已经存在了大量官方制作的Docker镜像，另一方面GCE，AWS提供的云平台已经很成熟了，用户通过租用一定的空间来部署K8s集群也很方便。
+    
+    但是，许多企业内部由于安全性的原因无法访问Internet，对于这些企业就需要通过创建一个内部的私有Docker Registry，并修改K8s的配置，来启动内网中的K8s集群。
+
+    第一步：
+    Docker private Registry(私有Docker镜像库)
+        使用Docker提供的Registry镜像创建一个私有镜像库
+
+    第二步：
+    kubelet配置
+        由于K8s中是以Pod而不是Docker容器来管理单元的，在Kubelet创建Pod时，还通过启动一个名为google_containers/pause的镜像来实现Pod的概念。
+</pre>
+
+<pre>
+K8s核心服务配置详解
+</pre> 
+
+<pre>
+K8s集群网络配置方案
+   在多个Node组成的K8s集群内，跨主机的容器间网络互通是K8s集群能够正常工作的前提条件,K8s本身并不会对跨主机容器网络进行设置，这需要额外的工具来实现，除了Google公有云平台GCE平台提供的网络设置，一些开源的工具包括flannel, Open vSwitch, Weave, Calico等都实现跨主机的荣期间网络互通。
+</pre>
+
+![](https://i.imgur.com/F7AQgjC.png)
+
+<pre>
+Kubectl命令行工具用法详解
+   kubectl作为客户端CLI工具，可以让用户通过命令行的方式对K8s集群进行操作。
+
+   kubectl命令行的语法
+   $ kubectl [command] [TYPE] [NAME] [flags]
+     如 kubectl get pods pod1
 </pre>
 
 
