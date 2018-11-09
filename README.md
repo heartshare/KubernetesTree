@@ -123,7 +123,7 @@ Repliction Controller
 </pre>
 
 <pre>
-Horizontal Pod AutoScale（HPA）
+Horizontal Pod AutoScale（HPA 横向扩容）
     通过手工执行kubectl scale命令，我们可以实现Pod的扩容和缩容。
     原理： 通过追踪分析RC控制的所有目标Pod的负载变化情况，来确定是否需要针对性地调整目标Pod的副本数，这是HPA的实现原理。
     当前HPA有一下两种方式作为Pod负载的度量指标。
@@ -131,4 +131,19 @@ Horizontal Pod AutoScale（HPA）
         2)应用程序自定义的度量指标，比如服务在每秒内的相应请求数（TPS, QPS）
 
     CPUUtilizationPercentage是一个算数平均值，即目标Pod所有副本吱声的CPU利用率的平均值。
+    如果定义一个Pod的Pod Request为0.4，而当前CPU的利用率为0.2，则它的CPU使用率为50%
+    如果某一时刻CPUUtilizationPercentage的值超过80%，则意味着当前的Pod副本数很可能不足以支撑下来更多的请求，需要进行动态扩容，而当请求高峰时段过去后，Pod的CPU利用率又会降下来，此时对应的Pod副本数应该自动减少到一个合理的水平。
+
+    CPUUtilizationPercentage计算过程使用到的Pod的CPU使用量通常是1分钟内的平均值，目前通过查询Heapster扩展组件来得到这个值，所以需要安装部署Heapster，这样一来便增加了系统的复杂度和实施HPA特性的复杂度，因此未来的计划是K8s自身实现一个基础性能采集模块，从而更好的支持HPA和其他需要用到基础性能数据的功能模块。
 </pre>
+
+![](https://i.imgur.com/pRR44Bb.png)
+
+<pre>
+Service服务
+   Service也是K8s里最核心的资源对象之一，K8s里的每个Service其实就是我们经常提起的微服务架构中的一个微服务。 
+
+   K8s的Service定义了一个服务的访问入口地址，前端的应用（Pod）通过这个入口地址访问其背后的一组由Pod副本组成的集群实例，Service与其后端的Pod副本集群则是通过Label Selector来实现“无缝对接”的，而RC的作用实际上是保证Service的服务能力和服务质量始终处于预期的标准。
+</pre>
+
+
