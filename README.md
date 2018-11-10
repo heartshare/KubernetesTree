@@ -388,4 +388,26 @@ Ingress: HTTP 7层路由机制
     可以使用Nginx来实现一个Ingress Controller.
 </pre>
 
+<pre>
+K8s核心原理
+   总体来看，Kubernetes API Server的核心功能是提供了K8s各类资源对象（如Pod， RC，Service等）的增，删，改，查以及Watch等HTTP Rest接口，成为集群内各个功能模块之间数据交互和通信的中心枢纽，是整个系统的数据总线和数据中心。除此之外，它还有以下一些功能特性。
+      1）是集群管理的API入口
+      2）是资源配额控制的入口
+      3）提供了完备的集群安全机制
+
+   Kubernetes Api Server通过一个名为kube-apiserver的进程提供服务，该进程运行在Master节点上，在默认情况下，kube-apiserver进程在本机的8080端口提供Rest服务，用户可以同时启动HTTPS安全端口来启动安全机制，加强REST API访问的安全性。
+
+   集群功能模块之间的通信
+      Kubernetes API Server作为集群的核心，负责集群各功能模块之间的通信，集群内的各个
+      功能模块通过API Server将信息存储etcd，当需要获取和操作这些数据时，则通过
+      API Server提供的REST接口赖实现，从而实现各模块之间的信息交互。
+
+      常见的一个交互场景是kubelet进程与API Server的交互，每个Node节点上的kubelet每隔
+      一个时间周期，就会调用一次API Server的Rest接口报告自身状态，API Server接收到这些
+      信息后，将节点状态信息更新到etcd中，此外，kubelet也通过API Server的Watch接口监听
+      到Pod信息，如果监听到新的Pod副本被调度绑定到本节点，则执行Pod对应的容器的创建和启
+      动逻辑，如果监听到Pod对象呗删除，则删除本节点相应的Pod容器，如果监听到修改Pod信息
+      ，则kubelet监听到变化后，会相应的修改本节点的Pod容器。
+</pre>
+
 
