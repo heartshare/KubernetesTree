@@ -287,15 +287,105 @@ Kubectl命令行工具用法详解
 
 ![](https://i.imgur.com/rdHMI4t.png)
 
+![](https://i.imgur.com/kFLR0sy.png)
+
 <pre>
 Job 批处理调度
-   K8s从1.2版本开始支持批处理类型的应用，可以通过K8s Job资源对象来定义并启动一个批处理任务，批处理任务通常并行启动多个计算进程去处理一批工作项，处理完成后，整个批处理任务结束，按照批处理任务实现方式的不同，批处理任务可以分为如下的接种方式
+   K8s从1.2版本开始支持批处理类型的应用，可以通过K8s Job资源对象来定义并启动一个批处理任
+   务，批处理任务通常并行启动多个计算进程去处理一批工作项，处理完成后，整个批处理任务结束。
 
-   Job Template Expansion模式：一个Job对象对应一个待处理的Work item，有几个Work item就产生几个独立的Job,通常适合Work item数量少，每个Work item要处理的数据量比较大的场景，比如有一个100G的文件作为一个Work item，总共10个文件需要处理
+   1）按照批处理任务实现方式的不同，批处理任务可以分为如下的接种方式
+      1）Job Template Expansion模式：一个Job对象对应一个待处理的Work item，有几个Work 
+      item就产生几个独立的Job,通常适合Work item数量少，每个Work item要处理的数据量比较大
+      的场景，比如有一个100G的文件作为一个Work item，总共10个文件需要处理
 
-   Queue with Pod Work item模式：采用一个任务队列存放Work item，一个Job对象作为消费者去完成这些Work itm,这种情况下，Job会启动N个Pod，每个Pod对应一个Work item
+      2）Queue with Pod Work item模式：采用一个任务队列存放Work item，一个Job对象作为
+      消费者去完成这些Work itm,这种情况下，Job会启动N个Pod，每个Pod对应一个Work item
 
-   Queue with Variable Pod Count模式：也是采用一个任务队列存放Work item,一个Job对象作为消费者去完成这些Work item，但与上面的模式不同，Job启动的Pod数量是可变的。
+      3）Queue with Variable Pod Count模式：也是采用一个任务队列存放Work item,一个
+      Job对象作为消费者去完成这些Work item，但与上面的模式不同，Job启动的Pod数量是可变的。
+
+   2) 考虑批处理的并行问题，K8s将Job分为以下三种类型
+      1）Non-parallel JObs
+         通常一个Job只启动一个Pod,则除非Pod异常，才会重启该Pod,一旦此Pod正常结束，Job将结束。
+      2）Parallel Jobs with a fixed completion count
+         并行Job会启动多个Pod，此时需要设定Job的.spec.completions参数为一个常数，当正常结束的Pod数量达到此参数设定的值后，Job结束，此外，Job的.spec.parallelism参数用来控制并行度，即同时启动几个Job来处理Work item
+      3）Parallel Jobs with a work queue
+         任务队列方式的并行Job需要一个独立的queue，Work item都在一个queue中存放，不能设置Job的的.spec.completions参数，此时Job有一下一些特性
+              1）每个Pod能独立判断和决定是否还有任务需要调度
+              2）如果某个Pod正常结束，则Job不会再启动新的Pod
+              3) 如果一个Pod成功结束，则此时应该不存在其他Pod还在干活的情况，他们应该都处于即将结束，退出的状态
+              5）如果所有的Pod都结束了，且至少有个Pod成功结束，则整个Job算是成功结束
+</pre>
+
+<pre>
+Pod的扩容和缩容
+    在实际生产系统中，我们经常会遇到某个服务需要扩容的场景，也可能会遇到由于资源呢紧张或者工作负载降低而需要减少服务实例数量的场景，此时，我们可以利用RC的scale机制来完成这些工作，以redis_slave RC为例，已定义的最初副本数量为2，通过kubectl scale命令可以将redis-slave控制的Pod副本数量从初始的2更新为3
+    $ kubectl scale rc redis-slave --replicas = 3
+    查看Pod的数量
+    $ kubectl get pods
+    将--replicas设置为比当前Pod副本数量更小的数字，系统将会杀掉一些运行中的Pod,以实现集群缩容。
+
+    除了可以手工通过kubectl scale命令完成Pod的扩容和缩容，K8s v1.1版本新增了名为Horizontal Pod Autoscaler(HPA)的控制器，用于实现基于CPU使用率进行自动Pod扩容，缩容的功能，HPA控制器基于Master的kube-controller-manager服务启动参数
+         --horizontal-pod-autoscaler-sync-period定义的时长（默认为30s），周期性的检测目标Pod的CPU使用率，并在满足条件时对ReplicationController或Deployment中的Pod副本数量进行调整，以符合用户定义的平均Pod CPU使用率，Pod CPU使用率来源于Heapster组件，所以需要预先安装好heapster。
+</pre>
+
+![](https://i.imgur.com/nTPTg8K.png)
+
+<pre>
+Pod的滚动升级
+   当集群中的某个服务需要升级时，我们需要停止目前与该服务相关的所有Pod，然后重新拉取镜像
+   并启动，如果集群规模很大，则这个工作就变成一个挑战，而且先全部停止然后逐步升级会导致较
+   长的时间服务不可用，K8s提供了rolling-update(滚动升级)功能来解决这个问题。
+   
+   滚动升级通过执行kubectl rololing-update 命令一键完成，该命令创建一个新的RC，然后自
+   动控制旧的RC中的Pod副本数量主键减少到0，同时新的RC中的Pod副本数量从0逐步增加到
+   目标值，最终实现了Pod的升级，需要注意的是，系统要求新的RC与旧的RC在相同的命名空间内
+</pre>
+
+<pre>
+集群外部访问Pod或Service
+   由于Pod和Service是K8s集群范围内的虚拟概念，所以集群外的客户端系统无法通过Pod的IP或
+   者Service的虚拟IP地址和虚拟端口访问他们，为了让外部客户端可以访问这些服务，可以将Pod
+   或Service的端口号映射到宿主机，一时的客户端能够通过物理机访问容器应用。
+</pre>
+
+![](https://i.imgur.com/mGL8kqt.png)
+
+<pre>
+DNS服务搭建
+  为了能够通过服务的名字在集群内部进行服务的相互访问，需要创建一个虚拟的DNS服务来完成服务名到ClusterIP的解析.
+  K8s提供的虚拟DNS服务名为skydns，由四个组件组成
+     1）etcd: DNS存储
+     2）kube2sky：将Kubenetes Master中的Service（服务）注册到etcd
+     3）skyDNS:提供DNS到域名解析服务
+     5)healthz：提供对skydns服务的健康检查功能。
+</pre>
+
+![](https://i.imgur.com/5AK0sQL.png)
+
+<pre>
+Ingress: HTTP 7层路由机制
+  基于Service的使用说明，Service的表现形式为IP:Port，即工作在TCP/IP层，而对于基于HTTP
+  的服务来说，不同的URL经常对应到不同的后端服务或者虚拟服务器（Virtual Host），这些应用
+  层的转发机制仅仅通过K8s的Service机制是无法实现的，K8s v1.1版本中新增的Ingress将不同
+  的URL的访问请求转发到后端不同的Service，实现HTTP层的业务路由机制，在K8s集群中，Ingress
+  的实现需要通过Ingress的定义与Ingress Controller的定义结合起来，才能形成完整的HTTP
+  负载分发功能。
+  例如：
+      对http://mywebsite.com/api的访问将被路由到后端名为 "api"的Service
+      对http://mywebsite.com/web的访问将被路由到后端名为"web"的Service
+      对http://mywebsite.com/doc的访问将被路由到后端名为"doc"的Service
+
+  1：创建Ingress Controller
+    在定义Ingress之前，需要先部署Ingress Controller，以实现为所有后端Service提供一个
+    统一的入口，Ingress Controller需要实现基于不同HTTP URL向后转发的负载分发规则，通
+    常应该根据应用系统的需求进行个性化实现，如果公有云服务商能够提供该类型的HTTP路由LoadBalancer，则可以设置其为Ingress Controller。
+    
+    在K8s中，Ingress Controller将以Pod的形式运行，监控apiserver的/ingress接口后端
+    的backend services，如果Service发生变化，Ingress Controller应自动更新其转发规则。
+
+    可以使用Nginx来实现一个Ingress Controller.
 </pre>
 
 
