@@ -388,6 +388,8 @@ Ingress: HTTP 7层路由机制
     可以使用Nginx来实现一个Ingress Controller.
 </pre>
 
+![](https://i.imgur.com/Fp5Ah5D.png)
+
 <pre>
 K8s核心原理
    总体来看，Kubernetes API Server的核心功能是提供了K8s各类资源对象（如Pod， RC，Service等）的增，删，改，查以及Watch等HTTP Rest接口，成为集群内各个功能模块之间数据交互和通信的中心枢纽，是整个系统的数据总线和数据中心。除此之外，它还有以下一些功能特性。
@@ -408,6 +410,32 @@ K8s核心原理
       到Pod信息，如果监听到新的Pod副本被调度绑定到本节点，则执行Pod对应的容器的创建和启
       动逻辑，如果监听到Pod对象呗删除，则删除本节点相应的Pod容器，如果监听到修改Pod信息
       ，则kubelet监听到变化后，会相应的修改本节点的Pod容器。
+
+   另外一个交互场景是 kube-controller-manager进程与API Server的交互，kube-controller-manager中的Node Controller模块通过API Server提供的watch接口，实时监控Node的信息，并做相应处理
+
+   还有一个比较重要的交互场景是kube-scheduler与API Server的交互，当Scheduler通过API Server的watch接口监听到新建Pod副本的信息后，它会检索所有符合该Pod要求的的Node列表，开始执行Pod调度逻辑，调度成功后将Pod绑定到目标节点。
+</pre>
+
+![](https://i.imgur.com/KnGlmxi.png)
+
+<pre>
+Controller Manager原理分析
+   Controller Manager作为集群管理内部的管理控制中心，负责集群内的Node，Pod副本，服务端点（Endpoint），命名空间，服务账号，资源定额等的管理，当某个Node意外宕机时，Controller Manager会及时发现此故障并执行自动化修复流程，确保集群始终处于与其的工作状态。
+
+   Controller Manager内部包含
+       1）Replication Controller
+       2) Node Controller
+       3) ResourceQuota Controller
+       5) Namespace Controller
+       6) ServiceAccout Controller
+       7) Token Controller
+       8) Service Controller
+       9) Endpoint Controller
+       等
+</pre>
+
+<pre>
+Scheduler原理分析
 </pre>
 
 
