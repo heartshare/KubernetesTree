@@ -434,8 +434,84 @@ Controller Manager原理分析
        等
 </pre>
 
+![](https://i.imgur.com/2VlTnPQ.png)
+
 <pre>
 Scheduler原理分析
+   Kubernetes Scheduler负责Pod调度。
+   Kubernetes Scheduler在整个系统中承担着“承上启下”的重要功能，“呈上”是指它负责接收Controller Manager创建的新Pod,为其安排一个落脚的“家”----目标Node, "启下"是指安置工作完成后，目标Node上的kubelet服务进程接管后续工作，负责Pod生命周期的下半生。
+
+   具体来说，Kubernetes Scheduler的作用是将待调度的Pod按照特定的调度算法和调度策略绑定到集群中的某个合适的Node上，并将绑定信息写入etcd中。在整个调度过程中涉及三个对象
+       1）待调度Pod列表
+       2）可用Node列表
+       3）调度算法和策略
+
+   简单的说，就是通过调度算法调度为待调度Pod列表的每个Pod从Node列表中选择一个最适合的Node.
+
+   随后，目标节点的kubelet通过API Server监听到Kubernetes Scheduler产生的Pod绑定事件，然后获取对应的Pod清单，下载Image镜像，并启动容器。
+</pre>
+
+<pre>
+kubelet运行机制分析
+   在K8s集群中，在每个Node节点上都会启动一个kubelet服务进程，该进程用于处理Master节点下发到本节点的任务，管理Pod及Pod中的容器，每个kubelet进程会在API Server上注册节点自身信息，定期向Master节点汇报节点资源的使用情况，并通过cAdvisor监控容器和节点资源。
+</pre>
+
+<pre>
+cAdvisor资源监控
+   在K8s集群中，应用程序的执行情况可以再不同的界别上检测到，这些级别包括，容器，Pod, Service和整个集群，作为K8s集群的一部分，K8s希望提供用户详细的各个级别的资源使用情况，这样使用户能够深入地了解应用的执行情况，并找到应用中可能的瓶颈，Heapster项目为K8s提供了一个基本的监控平台，它是集群级别的监控时间数据集成器，Heapster作为Pod运行在K8s集群中，和运行在K8s集群中的其他应用相似，Heapster Pod通过kubelet发现有运行在集群中的节点，并查看来自这些节点的资源使用情况信息，kubelet通过cAdvisor获取所有节点及容器的数据，Heapster通过带着关联标签的Pod分组这些信息，这些数据被推到一个可配置的后端，用于存储和可视化展示，
+   
+   cAdvisor是一个开源的分析容器资源使用率和性能特性的代理工具，它是因为容器而产生的，因此自然支持Docker容器，在K8s项目中，cAdvisor被集成到K8s代码中，cAdvisor自动查找所有在其所在节点上的容器，自动采集CPU,内存，文件系统和网络使用的统计信息，cAdvisor通过它所在节点机的Root容器，采集并分析该节点机的全面使用情况。
+</pre>
+
+![](https://i.imgur.com/LD0Gfrw.png)
+
+![](https://i.imgur.com/8xEBhGk.png)
+
+<pre>
+kube-proxy运行机制分析
+   K8s在创建服务时会为服务分配一个虚拟的IP地址，客户端通过访问这个虚拟的IP地址来访问服务，而服务则负责将请求转发到后端的Pod上，与普通的反向代理有些不同，首先它的IP地址是虚拟的，想从外面访问还需要一些技巧，其次是它的部署和启停是K8s统一自动管理的。
+
+   在K8s集群中的每个Node上都会运行一个kube-proxy服务进程，这个进程可以看做Service的透明代理兼负载均衡器，其核心功能是将到某个Service的访问请求转发到多个后端的多个Pod实例上，对每一个TCP类型的Kubernetes Service，kube-proxy都会在本地Node上建立一个SocketServer来负责接收请求，然后均匀发送到后端某个Pod的端口上，这个过程默认采用Round Robin负载均衡算法。
+</pre>
+
+<pre>
+K8s通过一系列机制来实现集群的安全控制，其中包括API Server的认证授权，准入控制机制及保护敏感信息的Secret机制等，集群的安全性必须考虑如下几个目标
+    1）保证容器与其所在的宿主机的资源
+    2）限制容器给基础设施及其他容器带来消极影响的能力
+    3）最小权限原则
+    5）明确组件间边界的划分
+    6）划分普通用户和管理员的角色
+    7）在必要的时候允许将管理员权限赋给普通用户
+    8）允许拥有Secret数据的应用在集群中运行
+</pre>
+
+<pre>
+网络原理
+   K8s网络模型
+      K8s网络模型设计的一个基础原则是：每个Pod都拥有一个独立的IP地址，而且假定所有Pod都在一个可以直接连通的，扁平的网络空间中，所以不管他们是否会运行在同一个Node中，都要求他们可以直接通过对方的IP进行访问，设计这个原则的原因是，用户不需要额外考虑如何建立Pod之间的连接，也不需要考虑将容器端口映射到主机端口等问题。
+
+      实际上，在K8s的世界里，IP是以Pod为 单位进行分配的，一个Pod内部的所有容器共享一个网络堆栈（实际上就是一个网络命名空间，包括他们的IP地址，网络设备，配置等都是共享的），按照这个网络原则抽象出来一个Pod一个IP的设计模型也被称作IP-per-Pod模型。
+
+  Docker网络模型
+      Docker本身的技术依赖与几年Linux内核虚拟化技术的发展，所以Docker对Linux内核的特性有很难抢的依赖，Docker使用到的Linux网络有关的技术主要包括
+         1）Network Namespace
+         2) Veth设备对
+         3）Iptables/Netfilter
+         5）网桥
+         6）路由
+</pre>
+
+<pre>
+K8s的网络实现
+   1）容器到容器之间的通信
+      IPC或者管道
+   2）抽象的Pod到Pod之间的通信
+   3）Pod到Service之间的通信
+   5）集群外部与内部组件之间的通信
+</pre>
+
+<pre>
+使用Java程序访问Kubernetes API
 </pre>
 
 
