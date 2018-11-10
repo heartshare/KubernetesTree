@@ -512,6 +512,85 @@ K8s的网络实现
 
 <pre>
 使用Java程序访问Kubernetes API
+   Jersey是一个RestFul请求服务Java框架，与Struts类似，它可以和Hibernate, Spring框架整合，通过它不仅方便开发RESTFul Web Service，而且可以将它作为客户端方便地访问Restful Wbe Service服务端。
+
+   由于K8s Api Server是RESTFul Web Service，因此此处选择用Jersey框架开发Restful Web Service客户端，用来访问Kubernetes API.
+
+   Fabric8
+</pre>
+
+<pre>
+Node的扩容
+   在实际生产系统中会经常遇到服务器容量不足的情况，这是就需要购买新的服务器，然后，将应用系统进行水平扩展来完成对系统的扩容。
+   在K8s集群中，一个新的Node的加入是非常简单的，在新的Node节点上安装Docker，kubelet, kube-proxy服务，然后配置kubelet和kube-proxy的启动参数，将Master URL指定为当前K8s集群的Master地址，最后启动这些服务，通过kubelet默认的自动注册机制，新的Node将会自动加入现有的K8s集群中。
+</pre>
+
+<pre>
+K8s资源管理
+   1）计算资源管理
+      在配置Pod的时候，可以为其中的每个容器指定需要使用的计算资源（CPU和内存）
+   2）资源配置管理
+      
+   3）服务质量管理
+   5）资源配额管理
+      如果一个K8s集群被多个用户或者多个团队共享使用，那么就需要考虑共享时刻对资源公平使用的问题，因为某个用户可能会使用超过基于公平原则分配给其的资源量。
+</pre>
+
+etcd集群
+
+![](https://i.imgur.com/dZhuT1n.png)
+
+K8s Master高可用部署方案
+
+![](https://i.imgur.com/ZvwKQsW.png)
+
+<pre>
+K8s的高可用部署方案
+   1) etcd的高可用部署
+      etcd在整个K8s集群中处于中心数据库的地位，为保证K8s集群的高可用性，首先需要保证数据库不是单点故障，一方面：etcd需要以集群的方式进行部署，以实现etcd数据存储的冗余，备份与高可用性； 另一方面：etcd存储的数据本身也应该使用可靠的存储设备。
+
+   2）Master高可用部署
+      在K8s集群中，Master服务扮演者控制中心的角色，主要的三个服务kube-apiserver, kube-controller-manager, kube-scheduler，通过不断的与工作节点上的kubelet, kube-proxy进行通信来维护整个集群的健康工作状态，如果Master的服务无法访问到某个Node,则会将该Node标记为不可用，不再向其调度新建的Pod,但对Master自身需要进行额外的监控，是Master不成为集群的单故障点，所以对Master服务也需要进行高可用方式的部署。
+
+      至少需要三台。
+</pre>
+
+![](https://i.imgur.com/hcndH73.png)
+
+<pre>
+集群监控
+   Heapster + Influxdb + Grafana集群性能监控平台搭建
+</pre>
+
+容器的GC设置
+
+![](https://i.imgur.com/RsGunXQ.png)
+
+<pre>
+K8s集群中的垃圾回收机制
+   K8s中的垃圾回收（简称GC）机制由kubelet完成，kubelet定期清理不再使用的容器和镜像，每分钟进行一次容器GC操作，每5分钟进行一次镜像GC操作。
+ 
+   1）容器的GC的设置
+      能被Gc清理的容器只能是仅由kubelet管理的容器，在kubelet所在的Node上直接通过docker run创建的容器将不会被kubelet进行GC操作。
+</pre>
+
+![](https://i.imgur.com/hiHKfe4.png)
+
+<pre>
+K8s中的日志管理平台
+   在K8s集群环境中，一个完整的应用或服务都会涉及为数众多的组件运行，各组件所在的Node及实例数量都是可变的，日志子系统如果不做集中化管理，则会给系统的运维支撑造成很大的困难，因此有必要在集群层面对日志进行统一的手机和检索工作。
+
+   容器中输出到控制台的日志，都会以*-json.log的命名方式保存在/var/lib/docker/containers/目录之下，这样就给了进行日志收集和后续处理的基础。
+
+   K8s推荐采用Fluentd + Elasticserch + Kibana完成对日志的采集，查询和展现工作。
+
+   系统部署架构
+       在各个Node上运行Fluentd容器，对本节点/var/log和/var/lib/docker/containers两个目录下的日志进行采集，然后汇总到Elasticsearch集群，最终通过Kibana完成和用户的交互工作。
+</pre>
+
+<pre>
+Apache Cassandra集群部署
+    Cassandra是一套开源分布式NoSQL数据库系统，其主要特点就是它不是单个数据库，而是由数据库节点共同构成的一个分布式的集群数据库，
 </pre>
 
 
